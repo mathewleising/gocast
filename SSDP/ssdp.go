@@ -48,7 +48,7 @@ Application-URL: http://%s:%d/apps/
         </serviceList>
     </device>
 </root>
-    `
+`
 )
 
 type Server struct{
