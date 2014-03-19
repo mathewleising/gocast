@@ -11,8 +11,44 @@ import(
 
 const (
     ssdpListen string = "239.255.255.250:1900"
-    ddxmlTemplate string = `HTTP/1.1 200 OK\r\nLOCATION: http://%s:%d/dd.xml\r\nCACHE-CONTROL: max-age=1800\r\nEXT:\r\nBOOTID.UPNP.ORG: 1\r\nSERVER: Linux/2.6 UPnP/1.0 quick_ssdp/1.0\r\nST: urn:dial-multiscreen-org:service:dial:1\r\nUSN: uuid:%s::urn:dial-multiscreen-org:service:dial:1\r\n\r\n`
-    ssdpReplyTemplate string = `<?xml version="1.0" encoding="utf-8"?><root xmlns="urn:schemas-upnp-org:device-1-0" xmlns:r="urn:restful-tv-org:schemas:upnp-dd"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>http://%s:%d</URLBase><device><deviceType>urn:schemas-upnp-org:device:dail:1</deviceType><friendlyName>%s</friendlyName><manufacturer>Google Inc.</manufacturer><modelName>Eureka Dongle</modelName><UDN>uuid:%s</UDN><serviceList><service><serviceType>urn:schemas-upnp-org:service:dail:1</serviceType><serviceId>urn:upnp-org:serviceId:dail</serviceId><controlURL>/ssdp/notfound</controlURL><eventSubURL>/ssdp/notfound</eventSubURL><SCPDURL>/ssdp/notfound</SCPDURL></service></serviceList></device></root>`
+    //ssdpReplyTemplate string = `HTTP/1.1 200 OK\r\nLOCATION: http://%s:%d/dd.xml\r\nCACHE-CONTROL: max-age=1800\r\nEXT:\r\nBOOTID.UPNP.ORG: 1\r\nSERVER: Linux/2.6 UPnP/1.0 quick_ssdp/1.0\r\nST: urn:dial-multiscreen-org:service:dial:1\r\nUSN: uuid:%s::urn:dial-multiscreen-org:service:dial:1\r\n\r\n`
+    ssdpReplyTemplate string =  `HTTP/1.1 200 OK
+LOCATION: http://%s:%d/dd.xml
+CACHE-CONTROL: max-age=1800
+CONFIGID.UPNP.ORG: 7337
+BOOTID.UPNP.ORG: 7337
+USN: uuid:%s
+ST: urn:dial-multiscreen-org:service:dial:1
+`
+
+    ddxmlTemplate string = `HTTP/1.1 200 OK
+Content-Type: application/xml
+Application-URL: http://%s:%d/apps/
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0" xmlns:r="urn:restful-tv-org:schemas:upnp-dd">
+    <specVersion>
+        <major>1</major>
+        <minor>0</minor>
+    </specVersion>
+    <URLBase>http://%s:%d</URLBase>
+    <device>
+        <deviceType>urn:schemas-upnp-org:device:dail:1</deviceType>
+        <friendlyName>%s</friendlyName>
+        <manufacturer>Google Inc.</manufacturer>
+        <modelName>Eureka Dongle</modelName>
+        <UDN>uuid:%s</UDN>
+        <serviceList>
+            <service>
+                <serviceType>urn:schemas-upnp-org:service:dail:1</serviceType>
+                <serviceId>urn:upnp-org:serviceId:dail</serviceId>
+                <controlURL>/ssdp/notfound</controlURL>
+                <eventSubURL>/ssdp/notfound</eventSubURL>
+                <SCPDURL>/ssdp/notfound</SCPDURL>
+            </service>
+        </serviceList>
+    </device>
+</root>
+    `
 )
 
 type Server struct{
@@ -29,7 +65,7 @@ func NewSSDPServer(ip string, port int, uuid string) (*Server, error) {
     s.uuid = uuid
     //ddXML= fmt.Sprintf(ddxmlTemplate, ip, port, uuid, "GiveUsAnAPlus")
     //ssdpReply= fmt.Sprintf(ssdpReplyTemplate, ip, port, uuid)
-    addr, err := net.ResolveUDPAddr("udp4", "239.255.255.250:1900")
+    addr, err := net.ResolveUDPAddr("udp4", ssdpListen)
     if err != nil {
           fmt.Println("error from ResolveUDPAddr:", err)
           return nil, err
@@ -44,17 +80,17 @@ func NewSSDPServer(ip string, port int, uuid string) (*Server, error) {
 }
 
 func (s *Server) Run(){
-  defer func() {
+    defer func() {
       fmt.Println("Closing connection")
       s.conn.Close()
-  }()
-    
+    }()
+
+    go s.handleMessage()
+
     http.HandleFunc("/dd.xml", func(w http.ResponseWriter, r *http.Request) {
               returnDeviceDescriptionXML(w, r, fmt.Sprintf(ddxmlTemplate, s.httpAddr , s.httpPort , "GiveUsAnAPlus", s.uuid ))
        })
     http.ListenAndServe(fmt.Sprintf("%s:%d", s.httpAddr, s.httpPort), nil)
-
-    s.handleMessage()
 }
 
 func (s *Server) handleMessage(){
@@ -63,7 +99,7 @@ func (s *Server) handleMessage(){
 
     n, addr, err := s.conn.ReadFromUDP(b)
     if err != nil || n == 0{
-        return
+        continue
     }
 
     msg := string(b)
@@ -71,7 +107,7 @@ func (s *Server) handleMessage(){
 
     if strings.Contains(msg, "ST: urn:dial-multiscreen-org:service:dial:1") {
       fmt.Printf("Responding to %s...\n", addr)
-      ssdpReply := fmt.Sprintf(ssdpReplyTemplate, s.httpAddr, s.httpPort, s.uuid)
+      ssdpReply := fmt.Sprintf(ssdpReplyTemplate, s.httpAddr, s.httpPort, s.httpAddr, s.httpPort, s.uuid)
       _,err := s.conn.WriteToUDP([]byte(ssdpReply),addr)
       if err != nil {
         fmt.Println(err) 
