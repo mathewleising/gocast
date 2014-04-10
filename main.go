@@ -2,7 +2,7 @@ package main
 
 import (
     "strings"
-    "github.com/mathewleising/gocast/SSDP"
+    "github.com/mathewleising/gocast/rest"
     "os/exec"
     "net"
     "fmt"
@@ -31,37 +31,37 @@ func main() {
 
     fmt.Printf("address: %s\n Port: %d\n UUID: %s\n\n\n", address, port, uuid)
 
-    s,err := ssdp.NewSSDPServer(address, port, uuid)
+    s,err := rest.NewSSDPServer(address, port, uuid)
     if err != nil {
         panic(fmt.Sprintf("Oops NewSSDPServer Error: %v\n", err))
     }
 
-    s.Run()
+    s.StartSSDP()
 }
 
 func getLocalIP() string {
-    tt, err := net.Interfaces() 
-    if err != nil { 
+    tt, err := net.Interfaces()
+    if err != nil {
         panic(fmt.Sprintf("Oops uuidgen Error: %v\n", err))
-    } 
+    }
 
-    for _, t := range tt { 
-        aa, err := t.Addrs() 
-        if err != nil { 
+    for _, t := range tt {
+        aa, err := t.Addrs()
+        if err != nil {
             panic(fmt.Sprintf("Oops uuidgen Error: %v\n", err))
-        } 
-        for _, a := range aa { 
-            ipnet, ok := a.(*net.IPNet) 
-            if !ok { 
-                continue 
-            } 
-            v4 := ipnet.IP.To4() 
-            if v4 == nil || v4[0] == 127 { // loopback address 
-                continue 
+        }
+        for _, a := range aa {
+            ipnet, ok := a.(*net.IPNet)
+            if !ok {
+                continue
+            }
+            v4 := ipnet.IP.To4()
+            if v4 == nil || v4[0] == 127 { // loopback address
+                continue
             }
             return string(v4.String())
-        } 
-    } 
+        }
+    }
     panic(fmt.Sprintf("Well this is embarrassing.. You started this program without having any IP Addresses open.. Come back when you are ready\n"))
 }
 
