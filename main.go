@@ -25,7 +25,7 @@ func init() {
 func main() {
     defer func() {
         if r := recover(); r != nil {
-            fmt.Println("Please forgived me, I panicked :|\n", r)
+            fmt.Println("Please forgive me, I panicked :|\n", r)
         }
     }()
 
@@ -36,6 +36,8 @@ func main() {
         panic(fmt.Sprintf("Oops NewSSDPServer Error: %v\n", err))
     }
 
+    fmt.Println("Listening for traffic...")
+    s.StartHttp()
     s.StartSSDP()
 }
 

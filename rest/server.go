@@ -17,6 +17,7 @@ type Server struct{
 }
 
 func NewSSDPServer(ip string, port int, uuid string) (*Server, error) {
+    fmt.Println("Creating Server...")
     s := new(Server)
     s.httpAddr = ip
     s.httpPort = port
